@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Include jsPDF library from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d0f1c; /* A deep, dark blue */
+            color: #e0e7ff; /* A soft, light blue for text */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Subtle Background Gradients */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            width: 80%;
+            height: 80%;
+            background: radial-gradient(circle, rgba(103, 58, 183, 0.2), rgba(13, 15, 28, 0));
+            animation: move-gradient 20s infinite alternate ease-in-out;
+            z-index: -2;
+            opacity: 0.7;
+        }
+        
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: 15%;
+            right: 15%;
+            width: 70%;
+            height: 70%;
+            background: radial-gradient(circle, rgba(0, 204, 255, 0.15), rgba(13, 15, 28, 0));
+            animation: move-gradient 25s infinite alternate-reverse ease-in-out;
+            z-index: -2;
+            opacity: 0.7;
+        }
+
+        @keyframes move-gradient {
+            from { transform: translate(-20%, -20%) rotate(0deg); }
+            to { transform: translate(20%, 20%) rotate(360deg); }
+        }
+
+        /* Glassmorphism Effect for the Chat Container */
+        .glass-container {
+            background: rgba(25, 27, 42, 0.6);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border-radius: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Subtle glowing border on hover/focus */
+        .glass-container:hover {
+            box-shadow: 0 0 40px rgba(0, 204, 255, 0.2);
+        }
+
+        /* Chat Bubble Styling */
+        .chat-message-user {
+            background-color: #2b3047;
+            color: #d1d5db;
+            border-radius: 1.5rem 1.5rem 0.5rem 1.5rem;
+            padding: 1rem;
+            max-width: 85%;
+            align-self: flex-end;
+            margin-bottom: 0.75rem;
+            word-wrap: break-word;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .chat-message-ai {
+            background-color: #3d4566;
+            color: #ffffff;
+            border-radius: 1.5rem 1.5rem 1.5rem 0.5rem;
+            padding: 1rem;
+            max-width: 85%;
+            align-self: flex-start;
+            margin-bottom: 0.75rem;
+            word-wrap: break-word;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .chat-image {
+            max-width: 80%;
+            height: auto;
+            border-radius: 1rem;
+            margin-top: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            align-self: flex-start;
+            border: 2px solid #6d28d9;
+        }
+
+        .chat-code {
+            max-width: 85%;
+            align-self: flex-start;
+            margin-bottom: 0.75rem;
+            background-color: #1e202e; /* Darker, specific background for code */
+            border-radius: 0.75rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        
+        /* Fade-in Animation for Messages */
+        .message-fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Typing Animation */
+        .typing-indicator span::after {
+            content: '|';
+            display: inline-block;
+            animation: blink-cursor 1s steps(2, start) infinite;
+            font-weight: bold;
+        }
+        @keyframes blink-cursor {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .image-preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            padding: 0.5rem;
+            background-color: #2b3047;
+            border-radius: 1rem;
+            margin-top: 0.5rem;
+            position: relative;
+        }
+        .image-preview {
+            max-width: 100%;
+            max-height: 100px;
+            border-radius: 0.5rem;
+        }
+        .clear-image-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Styling for the new Preview button */
+        .preview-button {
+            margin-top: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            background-color: #5b21b6;
+            color: white;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            text-align: center;
+        }
+        .preview-button:hover {
+            background-color: #4c1d95;
+            transform: scale(1.05);
+        }
+
+        /* Styling for the live preview iframe */
+        .live-preview-iframe {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #4b5563;
+            border-radius: 1rem;
+            margin-top: 1rem;
+        }
+
+        /* Container for the code block and preview button */
+        .code-block-container {
+            display: flex;
+            flex-direction: column;
+            align-self: flex-start;
+            max-width: 85%;
+            margin-bottom: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container glass-container flex flex-col w-full max-w-lg md:max-w-xl lg:max-w-2xl h-5/6 rounded-3xl p-6">
+        
+        <!-- Header -->
+        <div class="chat-header text-center py-4 font-bold text-2xl mb-4 border-b border-gray-700">
+            Aura 
+        </div>
+
+        <!-- Chat History Box -->
+        <div id="chat-box" class="chat-box flex-grow overflow-y-auto pr-2">
+            <!-- Chat messages will be dynamically added here by JavaScript -->
+        </div>
+
+        <!-- Input and Send Button -->
+        <div class="mt-4 flex flex-col">
+            <div id="image-preview-container" class="hidden image-preview-container">
+            </div>
+            <div class="flex items-center mt-2">
+                <label for="image-upload" class="cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                </label>
+                <input type="file" id="image-upload" accept="image/*" class="hidden" multiple>
+                <input type="text" id="chat-input" placeholder="Ask me anything..." class="flex-grow p-4 mx-2 rounded-full bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 shadow-inner">
+                
+                <button id="pdf-btn" class="ml-2 w-12 h-12 flex items-center justify-center rounded-full bg-red-600 hover:bg-red-700 text-white transition-all duration-200 transform hover:scale-105 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2-2a.5.5 0 00-.5.5V16a.5.5 0 00.5.5h8a.5.5 0 00.5-.5V2.5a.5.5 0 00-.5-.5H6zM8 9a1 1 0 100 2h4a1 1 0 100-2H8z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+
+                <button id="chat-send-btn" class="ml-2 w-12 h-12 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 transform hover:scale-105 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API key for model authentication. This is automatically handled by the canvas environment.
+        const apiKey = "AIzaSyD5T6dy1Qh2QkErn506UCgcKqFIt4kP6yA"; 
+
+        // DOM elements
+        const chatBox = document.getElementById('chat-box');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        const imageUpload = document.getElementById('image-upload');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const pdfBtn = document.getElementById('pdf-btn');
+
+        let uploadedImages = [];
+
+        /**
+         * Clears all uploaded images from the UI and the internal array.
+         */
+        function clearUploadedImages() {
+            uploadedImages = [];
+            imageUpload.value = '';
+            imagePreviewContainer.classList.add('hidden');
+            imagePreviewContainer.innerHTML = '';
+        }
+
+        /**
+         * Classifies the user's intent to determine if they want text, code, or image analysis.
+         * @param {string} prompt The user's query.
+         * @returns {Promise<object>} A promise that resolves to an object with the intent type and prompt.
+         */
+        async function classifyIntent(prompt) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const classificationPrompt = `Classify the following user query into one of three categories: "image_analysis", "code", or "text". Your response must be a JSON object with two keys: "type" (the category) and "prompt" (the core request).
+
+Examples:
+User: "what is in this picture?" (with an image attached)
+Output: {"type": "image_analysis", "prompt": "what is in this picture?"}
+
+User: "can you write a python function to sort a list?"
+Output: {"type": "code", "prompt": "a python function to sort a list"}
+
+User: "what is the capital of France?"
+Output: {"type": "text", "prompt": "what is the capital of France?"}
+
+User query: "${prompt}"`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: classificationPrompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "type": { "type": "STRING", "enum": ["image_analysis", "code", "text"] },
+                            "prompt": { "type": "STRING" }
+                        },
+                        "propertyOrdering": ["type", "prompt"]
+                    }
+                }
+            };
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                const jsonString = result.candidates[0].content.parts[0].text;
+                return JSON.parse(jsonString);
+            } catch (error) {
+                console.error("Error classifying intent:", error);
+                return { type: 'text', prompt: prompt }; // Fallback to text if classification fails
+            }
+        }
+
+        /**
+         * Creates and appends a new chat message to the chat box.
+         * @param {string|HTMLElement} content The message content.
+         * @param {string} type The message type ('user' or 'ai').
+         */
+        function createMessageDiv(content, type) {
+            const messageDiv = document.createElement('div');
+            // This is a new class for code-related messages
+            if (content.classList && content.classList.contains('code-block-container')) {
+                messageDiv.classList.add('chat-message-ai', 'message-fade-in');
+                messageDiv.appendChild(content);
+            } else {
+                messageDiv.classList.add(`chat-message-${type}`, 'message-fade-in');
+                const textContent = document.createElement('p');
+                textContent.textContent = content;
+                messageDiv.appendChild(textContent);
+            }
+            
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        /**
+         * A simple UI-based notification for when a user needs to perform an action.
+         * @param {string} message The message to display.
+         */
+        function showMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = message;
+            messageDiv.classList.add('chat-message-ai', 'message-fade-in');
+            messageDiv.style.textAlign = 'center';
+            messageDiv.style.fontStyle = 'italic';
+            messageDiv.style.opacity = '0.8';
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 3000); // Remove message after 3 seconds
+        }
+
+        // Handle multiple image uploads
+        imageUpload.addEventListener('change', (event) => {
+            uploadedImages = [];
+            imagePreviewContainer.innerHTML = '';
+            
+            const files = event.target.files;
+            if (files.length > 0) {
+                imagePreviewContainer.classList.remove('hidden');
+                for (const file of files) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadedImages.push({
+                            mimeType: file.type,
+                            data: e.target.result.split(',')[1] // Get base64 data part
+                        });
+                        const imgWrapper = document.createElement('div');
+                        imgWrapper.classList.add('relative');
+                        const imgElement = document.createElement('img');
+                        imgElement.src = e.target.result;
+                        imgElement.classList.add('image-preview');
+                        imgElement.style.maxWidth = '100px';
+                        imgElement.style.maxHeight = '100px';
+                        imgWrapper.appendChild(imgElement);
+                        imagePreviewContainer.appendChild(imgWrapper);
+                    };
+                    reader.readAsDataURL(file);
+                }
+                const clearBtn = document.createElement('button');
+                clearBtn.classList.add('clear-image-btn');
+                clearBtn.innerHTML = '&times;';
+                clearBtn.onclick = clearUploadedImages;
+                imagePreviewContainer.appendChild(clearBtn);
+            } else {
+                imagePreviewContainer.classList.add('hidden');
+            }
+        });
+
+        /**
+         * Executes HTML/JS code and displays it in a new iframe for live preview.
+         * @param {string} codeContent The full HTML/JS code to preview.
+         */
+        function showPreview(codeContent) {
+            let iframe = document.getElementById('live-preview-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'live-preview-iframe';
+                iframe.classList.add('live-preview-iframe', 'message-fade-in');
+                chatBox.appendChild(iframe);
+            }
+            // Clear previous content
+            iframe.contentDocument.open();
+            iframe.contentDocument.write(codeContent);
+            iframe.contentDocument.close();
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        /**
+         * Generates and downloads a PDF from the currently uploaded image.
+         */
+        async function createPDFFromImage() {
+            if (uploadedImages.length === 0) {
+                showMessage("Please upload one or more images first.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            for (let i = 0; i < uploadedImages.length; i++) {
+                const imgData = `data:${uploadedImages[i].mimeType};base64,${uploadedImages[i].data}`;
+                const img = new Image();
+                img.src = imgData;
+                await new Promise(resolve => img.onload = resolve);
+
+                const imgWidth = img.width;
+                const imgHeight = img.height;
+                const docWidth = doc.internal.pageSize.getWidth();
+                const docHeight = doc.internal.pageSize.getHeight();
+
+                const ratio = Math.min(docWidth / imgWidth, docHeight / imgHeight);
+                const width = imgWidth * ratio;
+                const height = imgHeight * ratio;
+                const x = (docWidth - width) / 2;
+                const y = (docHeight - height) / 2;
+
+                if (i > 0) {
+                    doc.addPage();
+                }
+                doc.addImage(imgData, 'JPEG', x, y, width, height);
+            }
+
+            doc.save("images-to-pdf.pdf");
+            showMessage("PDF generated and downloaded!");
+            clearUploadedImages();
+        }
+
+        async function sendMessage() {
+            const userMessage = chatInput.value.trim();
+            if (userMessage === '' && uploadedImages.length === 0) return;
+
+            // Display user message
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.classList.add('chat-message-user', 'message-fade-in');
+            if (userMessage) {
+                const textContent = document.createElement('p');
+                textContent.textContent = userMessage;
+                userMessageDiv.appendChild(textContent);
+            }
+            if (uploadedImages.length > 0) {
+                uploadedImages.forEach(img => {
+                    const imgElement = document.createElement('img');
+                    imgElement.src = `data:${img.mimeType};base64,${img.data}`;
+                    imgElement.classList.add('chat-image');
+                    userMessageDiv.appendChild(imgElement);
+                });
+            }
+            chatBox.appendChild(userMessageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            chatInput.value = '';
+
+            // Add loading indicator
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.classList.add('chat-message-ai', 'typing-indicator', 'message-fade-in');
+            loadingIndicator.innerHTML = `<span>Aura is typing</span>`;
+            chatBox.appendChild(loadingIndicator);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const lowerCaseMessage = userMessage.toLowerCase();
+                // A more robust check for creator-related questions
+                const isCreatorQuery = lowerCaseMessage.includes("who made you") ||
+                                       lowerCaseMessage.includes("who created you") ||
+                                       lowerCaseMessage.includes("who built you") ||
+                                       lowerCaseMessage.includes("your creator") ||
+                                       lowerCaseMessage.includes("where did you come from");
+                const isVaibhavQuery = lowerCaseMessage.includes("vaibhav");
+
+                if (isVaibhavQuery) {
+                    const creatorMessage = "Vaibhav is my master and a good person.";
+                    chatBox.removeChild(loadingIndicator);
+                    createMessageDiv(creatorMessage, 'ai');
+                    return;
+                }
+
+                if (isCreatorQuery) {
+                    const creatorMessage = "Vaibhav has made me.";
+                    chatBox.removeChild(loadingIndicator);
+                    createMessageDiv(creatorMessage, 'ai');
+                    return;
+                }
+
+                let intent;
+                if (uploadedImages.length > 0) {
+                    // Force image analysis if any images are uploaded
+                    intent = { type: 'image_analysis', prompt: userMessage };
+                } else {
+                    intent = await classifyIntent(userMessage);
+                }
+                
+                let aiMessage;
+                const model = "gemini-2.5-flash-preview-05-20";
+                let systemPrompt = "You are Aura, a friendly and helpful AI. Your goal is to provide clear, easy-to-understand responses. Feel free to use a conversational tone, and provide simple, direct answers to help the user.";
+
+                switch (intent.type) {
+                    case 'code':
+                        systemPrompt = "You are a specialized code generation AI. Your task is to provide complete, runnable, and well-commented code in the language requested by the user. Your output should be ONLY the code block, formatted with markdown. Do not include any conversational text before or after the code. Use standard markdown for code blocks (e.g., ```python).";
+                        
+                        const codePayload = {
+                            contents: [{ parts: [{ text: intent.prompt }] }],
+                            systemInstruction: {
+                                parts: [{ text: systemPrompt }]
+                            }
+                        };
+                        const codeResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(codePayload)
+                        });
+                        if (!codeResponse.ok) {
+                            throw new Error(`Code API call failed with status: ${codeResponse.status}`);
+                        }
+                        const codeResult = await codeResponse.json();
+                        aiMessage = codeResult?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        
+                        if (aiMessage && aiMessage.startsWith('```')) {
+                            // Find the language from the markdown tag
+                            const languageMatch = aiMessage.match(/^```(\w+)/);
+                            const language = languageMatch ? languageMatch[1] : '';
+
+                            // Extract the raw code content
+                            const codeContent = aiMessage.substring(aiMessage.indexOf('\n') + 1, aiMessage.lastIndexOf('```')).trim();
+                            
+                            // Create the container for the code block and button
+                            const codeBlockContainer = document.createElement('div');
+                            codeBlockContainer.classList.add('code-block-container');
+
+                            // Create the <pre> element for code with special styling
+                            const preElement = document.createElement('pre');
+                            preElement.classList.add('chat-code');
+                            preElement.textContent = codeContent;
+                            
+                            // Append the code block to the container
+                            codeBlockContainer.appendChild(preElement);
+
+                            // Check if the code is previewable (HTML or JavaScript)
+                            if (['html', 'javascript', 'js'].includes(language.toLowerCase())) {
+                                const previewBtn = document.createElement('button');
+                                previewBtn.textContent = 'Preview';
+                                previewBtn.classList.add('preview-button');
+                                previewBtn.onclick = () => showPreview(codeContent);
+                                codeBlockContainer.appendChild(previewBtn);
+                            }
+
+                            chatBox.removeChild(loadingIndicator);
+                            createMessageDiv(codeBlockContainer, 'ai');
+                            return; // Exit the function after displaying code
+                        }
+                        break;
+                    
+                    case 'image_analysis':
+                        const imagePayloadParts = [];
+                        if (userMessage) {
+                            imagePayloadParts.push({ text: userMessage });
+                        }
+                        // This is the key change: ensure uploadedImages is an array and each item is a valid inlineData object
+                        if (uploadedImages.length > 0) {
+                            uploadedImages.forEach(img => {
+                                imagePayloadParts.push({ inlineData: img });
+                            });
+                        }
+
+                        const imagePayload = {
+                            contents: [{ parts: imagePayloadParts }],
+                            systemInstruction: {
+                                parts: [{ text: systemPrompt }]
+                            }
+                        };
+                        const imageResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(imagePayload)
+                        });
+                        if (!imageResponse.ok) {
+                            // Provide more specific error message for image analysis failure
+                            throw new Error(`Image API call failed with status: ${imageResponse.status}`);
+                        }
+                        const imageResult = await imageResponse.json();
+                        aiMessage = imageResult?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        break;
+
+                    case 'text':
+                    default:
+                        const textPayload = {
+                            contents: [{ parts: [{ text: userMessage }] }],
+                            systemInstruction: {
+                                parts: [{ text: systemPrompt }]
+                            }
+                        };
+                        const textResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(textPayload)
+                        });
+                        if (!textResponse.ok) {
+                            throw new Error(`Text API call failed with status: ${textResponse.status}`);
+                        }
+                        const textResult = await textResponse.json();
+                        aiMessage = textResult?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        break;
+                }
+
+                // Remove loading indicator
+                chatBox.removeChild(loadingIndicator);
+                
+                // Display the AI's response for non-code queries
+                createMessageDiv(aiMessage || "Sorry, I couldn't get a response. Please try again.", 'ai');
+
+            } catch (error) {
+                console.error("Communication error with AI:", error);
+                
+                // Remove loading indicator on error and show a more specific message
+                chatBox.removeChild(loadingIndicator);
+                createMessageDiv(`Error: Unable to connect. Please check your network connection or try again later.`, 'ai');
+            } finally {
+                // Clear the images and input after the entire process is complete.
+                clearUploadedImages();
+            }
+        }
+
+        // Add event listeners for sending messages
+        chatSendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Event listener for the new PDF button
+        pdfBtn.addEventListener('click', createPDFFromImage);
+    </script>
+</body>
+</html>
